@@ -1,0 +1,35 @@
+# Third-party dependencies copied into the repo locally
+/third_lib/
+/onnxruntime_go_local/
+
+# Caches
+/.gocache/
+/trt_cache/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Build outputs and native libraries
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.o
+*.obj
+*.out
+/bin/
+/build/
+/dist/
+
+# Model and export artifacts
+*.onnx
+*.nnue
+*.engine
+*.profile
+*.timing
+
+# Local notes and logs
+*.txt
+*.log

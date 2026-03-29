@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>迷你象棋自对弈</title>
+  <style>
+    :root {
+      --bg: #efe1c6;
+      --panel: rgba(46, 31, 21, 0.92);
+      --panel-text: #f5ead9;
+      --line: #35261d;
+      --accent: #b33a24;
+      --accent-2: #0f6b61;
+      --accent-3: #7d644c;
+      --board-shadow: 0 22px 60px rgba(61, 37, 18, 0.24);
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(255,255,255,0.55), transparent 30%),
+        linear-gradient(180deg, #f5e7cc 0%, #ead1a8 48%, #d1ac73 100%);
+      color: #25170f;
+    }
+    .page {
+      width: min(1380px, 100%);
+      margin: 0 auto;
+      padding: 22px 16px 28px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 20px;
+      align-items: start;
+    }
+    .board-shell {
+      background: rgba(255,255,255,0.28);
+      border: 1px solid rgba(53, 38, 29, 0.14);
+      border-radius: 28px;
+      padding: 18px;
+      box-shadow: var(--board-shadow);
+      backdrop-filter: blur(10px);
+    }
+    #boardSvg {
+      width: 100%;
+      aspect-ratio: 1 / 1.08;
+      display: block;
+      cursor: pointer;
+    }
+    .side {
+      background: var(--panel);
+      color: var(--panel-text);
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: 0 20px 48px rgba(31, 17, 10, 0.28);
+      display: grid;
+      gap: 14px;
+    }
+    .title {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 1px;
+    }
+    .subtitle {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.6;
+      opacity: 0.8;
+    }
+    .block {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .block.red {
+      border-left: 4px solid #d35f47;
+    }
+    .block.black {
+      border-left: 4px solid #0f8e78;
+    }
+    .block-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .stat-label {
+      font-size: 12px;
+      opacity: 0.72;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-size: 19px;
+      font-weight: 700;
+    }
+    .controls {
+      display: grid;
+      gap: 10px;
+    }
+    .triple {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    button,
+    select,
+    input[type="range"],
+    input[type="number"] {
+      width: 100%;
+    }
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 14px;
+      padding: 13px 16px;
+      background: linear-gradient(180deg, #d35f47, #a53320);
+      color: white;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: linear-gradient(180deg, #2b8a7e, #0f5e55);
+    }
+    button.ghost {
+      background: linear-gradient(180deg, #7f6b56, #5d4b3a);
+    }
+    button:disabled,
+    select:disabled,
+    input:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+    select,
+    input[type="number"] {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(18, 11, 7, 0.35);
+      color: var(--panel-text);
+      font-size: 14px;
+    }
+    .range-row {
+      display: grid;
+      gap: 6px;
+    }
+    .log {
+      min-height: 220px;
+      max-height: 320px;
+      overflow-y: auto;
+      background: rgba(8, 10, 8, 0.9);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      color: #a7ff8c;
+      line-height: 1.5;
+    }
+    .link-row {
+      display: flex;
+      gap: 10px;
+    }
+    .link-row a {
+      flex: 1;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 12px;
+      padding: 10px 12px;
+      color: #fff4e7;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    @media (max-width: 980px) {
+      .page {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="board-shell">
+      <svg id="boardSvg" viewBox="0 0 720 780" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="pieceShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="rgba(38, 18, 7, 0.28)"/>
+          </filter>
+        </defs>
+        <g id="boardLayer"></g>
+        <g id="highlightLayer"></g>
+        <g id="piecesLayer"></g>
+        <g id="animLayer"></g>
+      </svg>
+    </div>
+
+    <aside class="side">
+      <div>
+        <h1 class="title">迷你象棋自对弈</h1>
+        <p class="subtitle">沿用当前项目的 7x7 棋盘和迷你象棋规则。KataGo ONNX 走 MCTS，NNUE 走 alpha-beta；切到 NNUE 时，滑杆会改成搜索深度 1 到 6。</p>
+      </div>
+
+      <div class="block red">
+        <div class="block-title">红方</div>
+        <div class="stat-label">AI 模型</div>
+        <select id="redModelSelect"></select>
+        <div class="stat-label">搜索模式</div>
+        <select id="redAlgo">
+          <option value="mcts" selected>MCTS 蒙特卡洛</option>
+          <option value="fast">快速搜索</option>
+        </select>
+        <div class="range-row" style="margin-top:10px;">
+          <div id="redRangeTitle" class="stat-label">模拟次数 / 搜索强度</div>
+          <div id="redValLabel" class="stat-value">320</div>
+          <input type="range" id="redVal" min="40" max="2000" step="40" value="320">
+        </div>
+      </div>
+
+      <div class="block black">
+        <div class="block-title">黑方</div>
+        <div class="stat-label">AI 模型</div>
+        <select id="blackModelSelect"></select>
+        <div class="stat-label">搜索模式</div>
+        <select id="blackAlgo">
+          <option value="mcts" selected>MCTS 蒙特卡洛</option>
+          <option value="fast">快速搜索</option>
+        </select>
+        <div class="range-row" style="margin-top:10px;">
+          <div id="blackRangeTitle" class="stat-label">模拟次数 / 搜索强度</div>
+          <div id="blackValLabel" class="stat-value">320</div>
+          <input type="range" id="blackVal" min="40" max="2000" step="40" value="320">
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-title">全局控制</div>
+        <div class="stat-label">对战说明</div>
+        <div id="modelHint" class="stat-label" style="margin-top:8px;">红黑双方可分别选择模型，支持 NNUE 对战 KataGo ONNX。</div>
+        <div class="stat-label" style="margin-top:12px;">每步间隔 (ms)</div>
+        <input type="number" id="stepDelay" min="0" step="100" value="500">
+        <div class="triple" style="margin-top:12px;">
+          <button id="btnStart">开始</button>
+          <button id="btnPause" class="secondary" disabled>暂停</button>
+          <button id="btnStop" class="ghost" disabled>终止</button>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="stat-label">局面结果</div>
+        <div id="statusText" class="stat-value">加载中</div>
+        <div class="stat-label" style="margin-top:10px;">当前行棋</div>
+        <div id="turnText" class="stat-value">-</div>
+        <div style="display:none;">
+          <div class="stat-label" style="margin-top:10px;">红方胜率视角</div>
+          <div id="winProbText" class="stat-value">50.0%</div>
+        </div>
+        <div class="stat-label" style="margin-top:10px;">搜索统计</div>
+        <div id="searchText" class="stat-value">- / -</div>
+        <div class="stat-label" style="margin-top:10px;">当前步数</div>
+        <div id="moveCount" class="stat-value">0</div>
+      </div>
+
+      <div class="block">
+        <div class="block-title">日志</div>
+        <div id="log" class="log">等待开始...</div>
+      </div>
+
+      <div class="link-row">
+        <a href="./index.html">返回手动对局</a>
+        <a href="./selfplay.html">刷新本页</a>
+      </div>
+
+      <div style="display:none;">
+        <div id="simText">320</div>
+        <input id="simRange" type="range" min="80" max="1200" step="40" value="320">
+        <button id="btnAi">AI 落子</button>
+        <button id="btnUndo">悔一步</button>
+        <button id="btnNew">重新开局</button>
+      </div>
+    </aside>
+  </div>
+
+  <script src="js/main.js"></script>
+  <script src="js/selfplay.js"></script>
+</body>
+</html>

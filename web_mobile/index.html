@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>迷你象棋</title>
+  <style>
+    :root {
+      --bg: #efe1c6;
+      --panel: rgba(46, 31, 21, 0.9);
+      --panel-text: #f5ead9;
+      --line: #35261d;
+      --accent: #b33a24;
+      --accent-2: #0f6b61;
+      --board-shadow: 0 22px 60px rgba(61, 37, 18, 0.24);
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(255,255,255,0.55), transparent 30%),
+        linear-gradient(180deg, #f5e7cc 0%, #ead1a8 48%, #d1ac73 100%);
+      color: #25170f;
+    }
+    .page {
+      width: min(1100px, 100%);
+      margin: 0 auto;
+      padding: 22px 16px 28px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 20px;
+      align-items: start;
+    }
+    .board-shell {
+      background: rgba(255,255,255,0.28);
+      border: 1px solid rgba(53, 38, 29, 0.14);
+      border-radius: 28px;
+      padding: 18px;
+      box-shadow: var(--board-shadow);
+      backdrop-filter: blur(10px);
+    }
+    #boardSvg {
+      width: 100%;
+      aspect-ratio: 1 / 1.08;
+      display: block;
+      cursor: pointer;
+    }
+    .side {
+      background: var(--panel);
+      color: var(--panel-text);
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: 0 20px 48px rgba(31, 17, 10, 0.28);
+    }
+    .title {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: 1px;
+    }
+    .subtitle {
+      margin: 0 0 16px;
+      font-size: 13px;
+      line-height: 1.6;
+      opacity: 0.8;
+    }
+    .meta {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .stat {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .stat-label {
+      font-size: 12px;
+      opacity: 0.72;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .controls {
+      display: grid;
+      gap: 10px;
+    }
+    button,
+    select,
+    input[type="range"] {
+      width: 100%;
+    }
+    select {
+      appearance: none;
+      border: none;
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.95);
+      color: #25170f;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 14px;
+      padding: 14px 16px;
+      background: linear-gradient(180deg, #d35f47, #a53320);
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: linear-gradient(180deg, #2b8a7e, #0f5e55);
+    }
+    button.ghost {
+      background: linear-gradient(180deg, #7f6b56, #5d4b3a);
+    }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+    .slider-box {
+      margin-top: 6px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.08);
+    }
+    .tip {
+      margin-top: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      opacity: 0.8;
+    }
+    @media (max-width: 920px) {
+      .page {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="board-shell">
+      <svg id="boardSvg" viewBox="0 0 720 780" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="pieceShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="rgba(38, 18, 7, 0.28)"/>
+          </filter>
+        </defs>
+        <g id="boardLayer"></g>
+        <g id="highlightLayer"></g>
+        <g id="piecesLayer"></g>
+        <g id="animLayer"></g>
+      </svg>
+    </div>
+
+    <aside class="side">
+      <h1 class="title">迷你象棋</h1>
+      <p class="subtitle">下方是红方，上方是黑方。先点己方棋子，再点高亮落点完成走子。KataGo ONNX 用 MCTS，NNUE 用 alpha-beta。</p>
+      <div class="meta">
+        <div class="stat">
+          <div class="stat-label">局面结果</div>
+          <div id="statusText" class="stat-value">加载中</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">当前行棋</div>
+          <div id="turnText" class="stat-value">-</div>
+        </div>
+        <div class="stat" style="display:none;">
+          <div class="stat-label">红方胜率视角</div>
+          <div id="winProbText" class="stat-value">50.0%</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">搜索统计</div>
+          <div id="searchText" class="stat-value">- / -</div>
+        </div>
+      </div>
+
+      <div class="slider-box">
+        <div class="stat-label">AI 模型</div>
+        <select id="modelSelect"></select>
+        <div id="modelHint" class="stat-label" style="margin-top:8px;">切换模型后，重新开局生效。</div>
+      </div>
+
+      <div class="slider-box">
+        <div id="simLabel" class="stat-label">MCTS 模拟次数</div>
+        <div id="simText" class="stat-value" style="font-size:18px;">320</div>
+        <input id="simRange" type="range" min="80" max="2000" step="40" value="320">
+      </div>
+
+      <div class="slider-box">
+        <div class="stat-label">时间限制</div>
+        <div id="timeText" class="stat-value" style="font-size:18px;">10 秒</div>
+        <input id="timeRange" type="range" min="1" max="30" step="1" value="10">
+      </div>
+
+      <div class="controls">
+        <button id="btnAi">AI 落子</button>
+        <button id="btnUndo" class="secondary">悔一步</button>
+        <button id="btnNew" class="ghost">重新开局</button>
+      </div>
+
+      <div class="tip">
+        规则说明：7x7 棋盘，棋子只有车、炮、马、将、卒。除卒之外，其余走法与中国象棋一致；卒可以横走和前进，不能后退。
+      </div>
+    </aside>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
