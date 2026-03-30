@@ -133,6 +133,8 @@ func (h *Handler) handleNewGame(w http.ResponseWriter, r *http.Request) {
 		Position:   pos.Encode(),
 		ToMove:     sideToInt(pos.SideToMove),
 		LegalMoves: movesToDTO(pos.GenerateLegalMoves()),
+		InCheck:    pos.IsInCheck(pos.SideToMove),
+		CheckFrom:  checkSourceSquares(pos),
 		Status:     string(minixiangqi.EvaluateStatus(pos)),
 	})
 }
@@ -253,20 +255,48 @@ func (h *Handler) handleAIMove(w http.ResponseWriter, r *http.Request) {
 		Position:   pos.Encode(),
 		ToMove:     sideToInt(pos.SideToMove),
 		LegalMoves: movesToDTO(pos.GenerateLegalMoves()),
+		InCheck:    pos.IsInCheck(pos.SideToMove),
+		CheckFrom:  checkSourceSquares(pos),
 		Status:     status,
 	})
 }
 
 func stateFromGame(game *Game) StateResponse {
 	status := minixiangqi.EvaluateStatus(game.Pos)
+	legalMoves := game.Pos.GenerateLegalMoves()
 	return StateResponse{
 		ModelKey:   game.ModelKey,
 		ModelLabel: game.ModelTag,
 		Position:   game.Pos.Encode(),
 		ToMove:     sideToInt(game.Pos.SideToMove),
-		LegalMoves: movesToDTO(game.Pos.GenerateLegalMoves()),
+		LegalMoves: movesToDTO(legalMoves),
+		InCheck:    game.Pos.IsInCheck(game.Pos.SideToMove),
+		CheckFrom:  uniqueMoveSources(legalMoves),
 		Status:     string(status),
 	}
+}
+
+func checkSourceSquares(pos *minixiangqi.Position) []int {
+	if pos == nil || !pos.IsInCheck(pos.SideToMove) {
+		return nil
+	}
+	return uniqueMoveSources(pos.GenerateLegalMoves())
+}
+
+func uniqueMoveSources(moves []minixiangqi.Move) []int {
+	if len(moves) == 0 {
+		return nil
+	}
+	seen := make(map[int]struct{}, len(moves))
+	out := make([]int, 0, len(moves))
+	for _, mv := range moves {
+		if _, ok := seen[mv.From]; ok {
+			continue
+		}
+		seen[mv.From] = struct{}{}
+		out = append(out, mv.From)
+	}
+	return out
 }
 
 func getGame(id string) (*Game, error) {

@@ -18,6 +18,8 @@ type NewGameResponse struct {
 	Position   string    `json:"position"`
 	ToMove     int       `json:"to_move"`
 	LegalMoves []MoveDTO `json:"legal_moves"`
+	InCheck    bool      `json:"in_check"`
+	CheckFrom  []int     `json:"check_sources"`
 	Status     string    `json:"status"`
 }
 
@@ -30,6 +32,8 @@ type PlayResponse struct {
 	Position   string    `json:"position"`
 	ToMove     int       `json:"to_move"`
 	LegalMoves []MoveDTO `json:"legal_moves"`
+	InCheck    bool      `json:"in_check"`
+	CheckFrom  []int     `json:"check_sources"`
 	Status     string    `json:"status"`
 }
 
@@ -43,6 +47,8 @@ type StateResponse struct {
 	Position   string    `json:"position"`
 	ToMove     int       `json:"to_move"`
 	LegalMoves []MoveDTO `json:"legal_moves"`
+	InCheck    bool      `json:"in_check"`
+	CheckFrom  []int     `json:"check_sources"`
 	Status     string    `json:"status"`
 }
 
@@ -69,6 +75,8 @@ type AiMoveResponse struct {
 	Position   string    `json:"position"`
 	ToMove     int       `json:"to_move"`
 	LegalMoves []MoveDTO `json:"legal_moves"`
+	InCheck    bool      `json:"in_check"`
+	CheckFrom  []int     `json:"check_sources"`
 	Status     string    `json:"status"`
 }
 

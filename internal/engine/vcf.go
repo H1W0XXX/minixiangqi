@@ -29,6 +29,7 @@ type vcfTTEntry struct {
 type vcfContext struct {
 	tt         map[uint64]vcfTTEntry
 	inPath     map[uint64]bool
+	pathCounts map[uint64]int
 	nodes      int
 	nodeBudget int
 }
@@ -57,6 +58,7 @@ func (e *Engine) VCFSearch(pos *minixiangqi.Position, maxDepth int) VCFResult {
 	ctx := &vcfContext{
 		tt:         make(map[uint64]vcfTTEntry, 1<<16),
 		inPath:     make(map[uint64]bool, 1<<10),
+		pathCounts: make(map[uint64]int, 1<<10),
 		nodeBudget: vcfNodeBudgetBase + maxDepth*vcfNodeBudgetPerPly,
 	}
 
@@ -144,13 +146,24 @@ func (e *Engine) vcfAttackerCanForce(pos *minixiangqi.Position, depth int, ctx *
 	if depth <= 0 || ctx.reachNodeBudget() {
 		return false
 	}
-	key := pos.EnsureHash() ^ vcfModeAttack
+	rawHash := pos.EnsureHash()
+	if ctx.pathCounts[rawHash] >= 2 {
+		return false
+	}
+	key := rawHash ^ vcfModeAttack
 	if ctx.inPath[key] {
 		return false
 	}
 	if entry, ok := ctx.tt[key]; ok && entry.Depth >= depth {
 		return entry.Result
 	}
+	ctx.pathCounts[rawHash]++
+	defer func() {
+		ctx.pathCounts[rawHash]--
+		if ctx.pathCounts[rawHash] == 0 {
+			delete(ctx.pathCounts, rawHash)
+		}
+	}()
 	ctx.inPath[key] = true
 	defer delete(ctx.inPath, key)
 
@@ -185,13 +198,24 @@ func (e *Engine) vcfDefenderCanEscape(pos *minixiangqi.Position, depth int, ctx 
 	if depth <= 0 || ctx.reachNodeBudget() {
 		return true
 	}
-	key := pos.EnsureHash() ^ vcfModeDefend
+	rawHash := pos.EnsureHash()
+	if ctx.pathCounts[rawHash] >= 2 {
+		return true
+	}
+	key := rawHash ^ vcfModeDefend
 	if ctx.inPath[key] {
 		return true
 	}
 	if entry, ok := ctx.tt[key]; ok && entry.Depth >= depth {
 		return entry.Result
 	}
+	ctx.pathCounts[rawHash]++
+	defer func() {
+		ctx.pathCounts[rawHash]--
+		if ctx.pathCounts[rawHash] == 0 {
+			delete(ctx.pathCounts, rawHash)
+		}
+	}()
 	ctx.inPath[key] = true
 	defer delete(ctx.inPath, key)
 

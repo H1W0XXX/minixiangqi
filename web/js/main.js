@@ -14,6 +14,8 @@ let lastMove = null;
 let currentStatus = "ongoing";
 let selectedModelKey = "";
 let isAnimating = false;
+let inCheck = false;
+let checkSources = [];
 
 function rowColToSquare(row, col) {
   return row * COLS + col;
@@ -251,6 +253,44 @@ function renderHighlights() {
     layer.appendChild(circle);
   }
 
+  if (selectedSq === null && inCheck) {
+    checkSources.forEach((sq) => {
+      const { x, y } = squareCenter(sq);
+      const outer = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      outer.setAttribute("cx", x);
+      outer.setAttribute("cy", y);
+      outer.setAttribute("r", "42");
+      outer.setAttribute("fill", "none");
+      outer.setAttribute("stroke", "#8b3dff");
+      outer.setAttribute("stroke-width", "7");
+      outer.setAttribute("stroke-dasharray", "12 7");
+      outer.setAttribute("opacity", "0.95");
+      const outerAnim = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+      outerAnim.setAttribute("attributeName", "opacity");
+      outerAnim.setAttribute("values", "0.5;1;0.5");
+      outerAnim.setAttribute("dur", "1s");
+      outerAnim.setAttribute("repeatCount", "indefinite");
+      outer.appendChild(outerAnim);
+      layer.appendChild(outer);
+
+      const inner = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      inner.setAttribute("cx", x);
+      inner.setAttribute("cy", y);
+      inner.setAttribute("r", "34");
+      inner.setAttribute("fill", "none");
+      inner.setAttribute("stroke", "#ead9ff");
+      inner.setAttribute("stroke-width", "4");
+      inner.setAttribute("opacity", "0.95");
+      const innerAnim = document.createElementNS("http://www.w3.org/2000/svg", "animate");
+      innerAnim.setAttribute("attributeName", "r");
+      innerAnim.setAttribute("values", "31;37;31");
+      innerAnim.setAttribute("dur", "1s");
+      innerAnim.setAttribute("repeatCount", "indefinite");
+      inner.appendChild(innerAnim);
+      layer.appendChild(inner);
+    });
+  }
+
   legalMoves
     .filter((mv) => selectedSq !== null && mv.from === selectedSq)
     .forEach((mv) => {
@@ -346,6 +386,8 @@ async function syncState(data, options = {}) {
   const prevBoard = board.slice();
   parseFEN(data.position);
   legalMoves = data.legal_moves || [];
+  inCheck = !!data.in_check;
+  checkSources = data.check_sources || [];
   currentStatus = data.status || "ongoing";
   if (data.model_key) {
     selectedModelKey = data.model_key;

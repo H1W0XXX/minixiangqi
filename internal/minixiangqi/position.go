@@ -73,6 +73,9 @@ func (p *Position) GenerateLegalMoves() []Move {
 		if next.KingsFaceToFace() {
 			continue
 		}
+		if next.positionHashCount(next.EnsureHash()) >= 4 {
+			continue
+		}
 		out = append(out, mv)
 	}
 	return out
@@ -133,6 +136,19 @@ func (p *Position) GenerateLegalMovesFrom(from int) []Move {
 		}
 	}
 	return out
+}
+
+func (p *Position) positionHashCount(hash uint64) int {
+	if p == nil {
+		return 0
+	}
+	count := 0
+	for _, h := range p.PositionHashes {
+		if h == hash {
+			count++
+		}
+	}
+	return count
 }
 
 func (p *Position) IsInCheck(side Side) bool {

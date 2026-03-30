@@ -55,6 +55,7 @@ func DecodePosition(fen string) (*Position, error) {
 	}
 	pos.Rules = DefaultRules()
 	pos.Hash = pos.CalculateHash()
+	pos.PositionHashes = []uint64{pos.Hash}
 	return pos, nil
 }
 
